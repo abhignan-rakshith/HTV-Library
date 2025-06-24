@@ -11,8 +11,19 @@
       src="https://hanime.tv"
       allowfullscreen
       webpreferences="allowRunningInsecureContent, javascript=yes"
-      useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+      useragent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
       partition="persist:main"
+      httpreferrer="https://hanime.tv"
     ></webview>
+    <script>
+      // Debug: Log webview errors
+      const webview = document.getElementById('webview');
+      webview.addEventListener('did-fail-load', (e) => {
+        console.error('Webview load failed:', e);
+      });
+      webview.addEventListener('console-message', (e) => {
+        console.log('Webview console:', e.message);
+      });
+    </script>
   </body>
 </html>

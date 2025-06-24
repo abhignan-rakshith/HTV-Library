@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, session } = require('electron');
 const path = require('node:path');
 const { ElectronBlocker } = require('@cliqz/adblocker-electron');
 const fetch = require('cross-fetch');
@@ -9,8 +9,27 @@ if (require('electron-squirrel-startup')) {
 }
 
 let mainWindow;
+let blocker;
+
+// Initialize the ad blocker
+const initializeAdBlocker = async () => {
+  console.log('Initializing ad blocker...');
+  blocker = await ElectronBlocker.fromPrebuiltAdsAndTracking(fetch);
+  
+  // Enable blocking in default session
+  blocker.enableBlockingInSession(session.defaultSession);
+  
+  // Enable blocking in persist:main partition used by webview
+  const persistSession = session.fromPartition('persist:main');
+  blocker.enableBlockingInSession(persistSession);
+  
+  console.log('Ad blocker initialized and enabled for all sessions');
+};
 
 const createWindow = async () => {
+  // First initialize the ad blocker
+  await initializeAdBlocker();
+
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -25,15 +44,20 @@ const createWindow = async () => {
     },
   });
 
-  // Initialize adblocker
-  const blocker = await ElectronBlocker.fromPrebuiltAdsOnly(fetch);
-  blocker.enableBlockingInSession(mainWindow.webContents.session);
-
   // Load the index.html of the app.
   await mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
   // Enter fullscreen mode
   mainWindow.setFullScreen(true);
+
+  // Debug: Log blocked requests
+  blocker.on('request-blocked', (request) => {
+    console.log('Blocked:', request.url);
+  });
+
+  blocker.on('request-redirected', (request) => {
+    console.log('Redirected:', request.url);
+  });
 };
 
 // This method will be called when Electron has finished
@@ -48,8 +72,6 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
