@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session } = require('electron');
+const { app, BrowserWindow, session, globalShortcut } = require('electron');
 const path = require('node:path');
 const { ElectronBlocker } = require('@cliqz/adblocker-electron');
 const fetch = require('cross-fetch');
@@ -47,8 +47,17 @@ const createWindow = async () => {
   // Load the index.html of the app.
   await mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
-  // Enter fullscreen mode
-  mainWindow.setFullScreen(true);
+  // Register keyboard shortcuts
+  globalShortcut.register('F11', () => {
+    const isFullScreen = mainWindow.isFullScreen();
+    mainWindow.setFullScreen(!isFullScreen);
+  });
+
+  globalShortcut.register('Escape', () => {
+    if (mainWindow.isFullScreen()) {
+      mainWindow.setFullScreen(false);
+    }
+  });
 
   // Debug: Log blocked requests
   blocker.on('request-blocked', (request) => {
@@ -66,6 +75,9 @@ app.on('ready', createWindow);
 
 // Quit when all windows are closed.
 app.on('window-all-closed', () => {
+  // Unregister all shortcuts
+  globalShortcut.unregisterAll();
+  
   if (process.platform !== 'darwin') {
     app.quit();
   }

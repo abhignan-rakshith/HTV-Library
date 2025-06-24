@@ -6,7 +6,19 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld(
-  'api', {
-    // Add any functions you want to expose to the renderer process here
+  'electron', {
+    send: (channel, data) => {
+      // whitelist channels
+      const validChannels = ['mouse-top-edge'];
+      if (validChannels.includes(channel)) {
+        ipcRenderer.send(channel, data);
+      }
+    },
+    receive: (channel, func) => {
+      const validChannels = ['mouse-top-edge'];
+      if (validChannels.includes(channel)) {
+        ipcRenderer.on(channel, (event, ...args) => func(...args));
+      }
+    }
   }
 );
