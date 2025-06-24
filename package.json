@@ -2,7 +2,7 @@
   "name": "htv-library",
   "productName": "htv-library",
   "version": "1.0.0",
-  "description": "My Electron application description",
+  "description": "This is a fully integrated HTV library application built with Electron.",
   "main": "src/index.js",
   "scripts": {
     "start": "electron-forge start",
@@ -18,6 +18,8 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@cliqz/adblocker-electron": "^1.34.0",
+    "cross-fetch": "^4.1.0",
     "electron-squirrel-startup": "^1.0.1"
   },
   "devDependencies": {
