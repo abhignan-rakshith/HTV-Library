@@ -15,14 +15,47 @@
       partition="persist:main"
       httpreferrer="https://hanime.tv"
     ></webview>
+    <button id="fab" class="floating-action-button" title="Library">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+        <path fill="none" d="M0 0h24v24H0z"/>
+        <path d="M4 4c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2v16c0 1.1-.9 2-2 2H6c-1.1 0-2-.9-2-2V4zm2 0v16h12V4H6z" fill="currentColor"/>
+        <path d="M8 5h8v2H8zM8 9h8v2H8zM8 13h8v2H8z" fill="currentColor"/>
+      </svg>
+    </button>
+    <div id="snackbar" class="snackbar"></div>
     <script>
       // Debug: Log webview errors
       const webview = document.getElementById('webview');
+      const fab = document.getElementById('fab');
+      const snackbar = document.getElementById('snackbar');
+
       webview.addEventListener('did-fail-load', (e) => {
         console.error('Webview load failed:', e);
       });
+      
       webview.addEventListener('console-message', (e) => {
         console.log('Webview console:', e.message);
+      });
+
+      function showSnackbar(message) {
+        snackbar.textContent = message;
+        snackbar.classList.add('show');
+        setTimeout(() => {
+          snackbar.classList.remove('show');
+        }, 1500);
+      }
+
+      fab.addEventListener('click', () => {
+        const currentUrl = webview.getURL();
+        const isMediaPage = currentUrl.includes('/videos/hentai/') || 
+                          currentUrl.includes('/browse/images');
+        
+        if (isMediaPage) {
+          showSnackbar('Adding to library...');
+          // TODO: Implement actual library functionality
+        } else {
+          showSnackbar('Please navigate to a media page!');
+        }
       });
     </script>
   </body>
