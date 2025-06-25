@@ -1,5 +1,6 @@
-const { app, BrowserWindow, session, globalShortcut } = require('electron');
+const { app, BrowserWindow, session, globalShortcut, ipcMain } = require('electron');
 const path = require('node:path');
+const fs = require('fs');
 const { ElectronBlocker } = require('@cliqz/adblocker-electron');
 const fetch = require('cross-fetch');
 
@@ -10,6 +11,14 @@ if (require('electron-squirrel-startup')) {
 
 let mainWindow;
 let blocker;
+
+// Debug log file path
+const debugLogPath = path.join(app.getPath('userData'), 'debug.log');
+
+// Function to append to debug log
+function appendToDebugLog(message) {
+  fs.appendFileSync(debugLogPath, message);
+}
 
 // Initialize the ad blocker
 const initializeAdBlocker = async () => {
@@ -42,6 +51,11 @@ const createWindow = async () => {
       webviewTag: true,
       preload: path.join(__dirname, 'preload.js'),
     },
+  });
+
+  // Handle debug logging from renderer
+  ipcMain.on('debug-log', (event, message) => {
+    appendToDebugLog(message);
   });
 
   // Load the index.html of the app.

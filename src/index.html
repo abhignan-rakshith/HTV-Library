@@ -24,18 +24,30 @@
     </button>
     <div id="snackbar" class="snackbar"></div>
     <script>
-      // Debug: Log webview errors
       const webview = document.getElementById('webview');
       const fab = document.getElementById('fab');
       const snackbar = document.getElementById('snackbar');
 
-      webview.addEventListener('did-fail-load', (e) => {
-        console.error('Webview load failed:', e);
-      });
-      
+      // Forward all console messages from webview to main window
       webview.addEventListener('console-message', (e) => {
         console.log('Webview console:', e.message);
       });
+
+      // Enable debugging features
+      webview.addEventListener('dom-ready', () => {
+        // Force enable DevTools for webview
+        webview.openDevTools();
+        console.log('Webview ready, DevTools enabled');
+      });
+
+      // Log to both console and debug file
+      function debugLog(message, data = '') {
+        const logMessage = `${new Date().toISOString()} - ${message}${data ? ': ' + JSON.stringify(data, null, 2) : ''}\n`;
+        console.log(logMessage);
+        
+        // Send the log message to the main process to save to file
+        window.electron.send('debug-log', logMessage);
+      }
 
       function showSnackbar(message) {
         snackbar.textContent = message;
@@ -45,14 +57,117 @@
         }, 1500);
       }
 
-      fab.addEventListener('click', () => {
+      async function scrapeVideoPage() {
+        try {
+          console.log('🔍 Starting page scrape...');
+          showSnackbar('Starting scrape...');
+          
+          // Execute JavaScript in the webview context to get the page data
+          const pageData = await webview.executeJavaScript(`
+            (function() {
+              console.log('Inside webview context');
+              
+              // Log each element as we find it
+              const title = document.querySelector('.tv-title');
+              console.log('Title element:', title?.textContent);
+              
+              const views = document.querySelector('.tv-views');
+              console.log('Views element:', views?.textContent);
+              
+              const thumbnail = document.querySelector('.hvpi-cover');
+              console.log('Thumbnail element:', thumbnail?.src);
+              
+              const brand = document.querySelector('.hvpimbc-text[href*="/browse/brands/"]');
+              console.log('Brand element:', brand?.textContent);
+              
+              // Find release date by looking through all hvpimbc-item elements
+              let releaseDate = null;
+              document.querySelectorAll('.hvpimbc-item').forEach(item => {
+                const header = item.querySelector('.hvpimbc-header');
+                if (header && header.textContent.includes('Release Date')) {
+                  releaseDate = item.querySelector('.hvpimbc-text');
+                }
+              });
+              console.log('Release date element:', releaseDate?.textContent);
+              
+              // Get tags from the tag links
+              const tagLinks = Array.from(document.querySelectorAll('a[href^="/browse/tags/"]'));
+              const tagTexts = tagLinks
+                .map(link => {
+                  const href = link.getAttribute('href');
+                  return href ? href.split('/browse/tags/')[1] : null;
+                })
+                .filter(Boolean);
+              console.log('Tags found:', tagTexts.length);
+              console.log('Tag list:', tagTexts);
+              
+              const plot = document.querySelector('.hvpist-description');
+              console.log('Plot element:', plot?.textContent);
+
+              const data = {
+                title: title?.textContent?.trim(),
+                views: views?.textContent?.trim(),
+                thumbnail: thumbnail?.src,
+                brand: brand?.textContent?.trim(),
+                releaseDate: releaseDate?.textContent?.trim(),
+                tags: tagTexts,
+                plot: plot?.textContent?.trim()
+              };
+
+              console.log('Collected data:', data);
+
+              // Check if all elements were found
+              const missingElements = [];
+              Object.entries(data).forEach(([key, value]) => {
+                if (!value || (Array.isArray(value) && value.length === 0)) {
+                  missingElements.push(key);
+                }
+              });
+
+              console.log('Missing elements:', missingElements);
+
+              return {
+                found: missingElements.length === 0,
+                missingElements,
+                data
+              };
+            })();
+          `);
+
+          console.log('📄 Scraping results:', pageData);
+          
+          // Write to console in a more readable format
+          console.log('\n=== SCRAPED DATA ===');
+          if (pageData && pageData.data) {
+            Object.entries(pageData.data).forEach(([key, value]) => {
+              console.log(key + ':', value);
+            });
+          }
+          console.log('===================\n');
+
+          if (pageData.found) {
+            showSnackbar('Found all required elements!');
+            // Here we'll later add code to display the data in a table
+          } else {
+            showSnackbar('Missing elements: ' + pageData.missingElements.join(', '));
+          }
+
+          return pageData;
+        } catch (error) {
+          console.error('Error scraping page:', error);
+          showSnackbar('Error scraping page content');
+        }
+      }
+
+      fab.addEventListener('click', async () => {
         const currentUrl = webview.getURL();
-        const isMediaPage = currentUrl.includes('/videos/hentai/') || 
-                          currentUrl.includes('/browse/images');
         
-        if (isMediaPage) {
+        if (currentUrl.includes('/videos/hentai/')) {
+          showSnackbar('Scraping page content...');
+          await scrapeVideoPage();
+        } else if (currentUrl.includes('/browse/images')) {
           showSnackbar('Adding to library...');
-          // TODO: Implement actual library functionality
+          // TODO: Implement images library functionality
         } else {
           showSnackbar('Please navigate to a media page!');
         }

@@ -9,13 +9,13 @@ contextBridge.exposeInMainWorld(
   'electron', {
     send: (channel, data) => {
       // whitelist channels
-      const validChannels = ['mouse-top-edge'];
+      const validChannels = ['mouse-top-edge', 'debug-log'];
       if (validChannels.includes(channel)) {
         ipcRenderer.send(channel, data);
       }
     },
     receive: (channel, func) => {
-      const validChannels = ['mouse-top-edge'];
+      const validChannels = ['mouse-top-edge', 'debug-log'];
       if (validChannels.includes(channel)) {
         ipcRenderer.on(channel, (event, ...args) => func(...args));
       }
