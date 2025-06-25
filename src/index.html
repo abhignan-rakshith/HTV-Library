@@ -55,9 +55,7 @@
         setTimeout(() => {
           snackbar.classList.remove('show');
         }, 1500);
-      }
-
-      async function scrapeVideoPage() {
+      }      async function scrapeVideoPage() {
         try {
           console.log('🔍 Starting page scrape...');
           showSnackbar('Starting scrape...');
@@ -67,70 +65,111 @@
             (function() {
               console.log('Inside webview context');
               
-              // Log each element as we find it
-              const title = document.querySelector('.tv-title');
-              console.log('Title element:', title?.textContent);
-              
-              const views = document.querySelector('.tv-views');
-              console.log('Views element:', views?.textContent);
-              
-              const thumbnail = document.querySelector('.hvpi-cover');
-              console.log('Thumbnail element:', thumbnail?.src);
-              
-              const brand = document.querySelector('.hvpimbc-text[href*="/browse/brands/"]');
-              console.log('Brand element:', brand?.textContent);
-              
-              // Find release date by looking through all hvpimbc-item elements
-              let releaseDate = null;
-              document.querySelectorAll('.hvpimbc-item').forEach(item => {
-                const header = item.querySelector('.hvpimbc-header');
-                if (header && header.textContent.includes('Release Date')) {
-                  releaseDate = item.querySelector('.hvpimbc-text');
+              try {
+                // Log each element as we find it
+                const title = document.querySelector('.tv-title');
+                console.log('Title element:', title?.textContent);
+                
+                const views = document.querySelector('.tv-views');
+                console.log('Views element:', views?.textContent);
+                
+                const thumbnail = document.querySelector('.hvpi-cover');
+                console.log('Thumbnail element:', thumbnail?.src);
+                
+                const brand = document.querySelector('.hvpimbc-text[href*="/browse/brands/"]');
+                console.log('Brand element:', brand?.textContent);
+                
+                // Find release date by looking through all hvpimbc-item elements
+                let releaseDate = null;
+                document.querySelectorAll('.hvpimbc-item').forEach(item => {
+                  const header = item.querySelector('.hvpimbc-header');
+                  if (header && header.textContent.includes('Release Date')) {
+                    releaseDate = item.querySelector('.hvpimbc-text');
+                  }
+                });
+                console.log('Release date element:', releaseDate?.textContent);                // Get the current page URL without query parameters
+                let currentUrl = window.location.href;
+                // Remove query parameters like ?playlist_id
+                currentUrl = currentUrl.split('?')[0];
+                console.log('Current URL:', currentUrl);
+                
+                // Get tags from the tag links - using more general selector and limiting to first 10
+                let tagTexts = [];
+                try {
+                  // Only get tags from the first set of tag links (in the hvpis-text section)
+                  const tagLinks = document.querySelectorAll('.hvpis-text a[href^="/browse/tags/"]');
+                  console.log('Found tag elements:', tagLinks.length);
+                  
+                  if (tagLinks.length > 0) {
+                    // Extract tags, decode URL entities, remove duplicates, and limit to first 10
+                    tagTexts = [...new Set(
+                      Array.from(tagLinks)
+                        .slice(0, 10) // Limit to first 10 tag links
+                        .map(link => {
+                          const href = link.getAttribute('href');
+                          if (href) {
+                            const tag = href.split('/browse/tags/')[1];
+                            return decodeURIComponent(tag);
+                          } else {
+                            // Fallback to button content
+                            const content = link.querySelector('.btn__content');
+                            return content ? content.textContent.trim() : null;
+                          }
+                        })
+                        .filter(Boolean)
+                    )];
+                  }
+                } catch (tagError) {
+                  console.error('Error extracting tags:', tagError);
+                  tagTexts = [];
                 }
-              });
-              console.log('Release date element:', releaseDate?.textContent);
-              
-              // Get tags from the tag links
-              const tagLinks = Array.from(document.querySelectorAll('a[href^="/browse/tags/"]'));
-              const tagTexts = tagLinks
-                .map(link => {
-                  const href = link.getAttribute('href');
-                  return href ? href.split('/browse/tags/')[1] : null;
-                })
-                .filter(Boolean);
-              console.log('Tags found:', tagTexts.length);
-              console.log('Tag list:', tagTexts);
-              
-              const plot = document.querySelector('.hvpist-description');
-              console.log('Plot element:', plot?.textContent);
-
-              const data = {
-                title: title?.textContent?.trim(),
-                views: views?.textContent?.trim(),
-                thumbnail: thumbnail?.src,
-                brand: brand?.textContent?.trim(),
-                releaseDate: releaseDate?.textContent?.trim(),
-                tags: tagTexts,
-                plot: plot?.textContent?.trim()
-              };
-
-              console.log('Collected data:', data);
-
-              // Check if all elements were found
-              const missingElements = [];
-              Object.entries(data).forEach(([key, value]) => {
-                if (!value || (Array.isArray(value) && value.length === 0)) {
-                  missingElements.push(key);
+                
+                console.log('Tags found:', tagTexts.length);
+                console.log('Tag list:', tagTexts);
+                
+                const plot = document.querySelector('.hvpist-description');
+                console.log('Plot element:', plot?.textContent);
+                
+                // Extract just the numeric view count and convert to integer
+                let viewCount = null;
+                if (views && views.textContent) {
+                  const cleanViews = views.textContent.trim().split(' ')[0].replace(/,/g, '');
+                  viewCount = parseInt(cleanViews, 10);
                 }
-              });
+                  const data = {
+                  url: currentUrl,
+                  title: title?.textContent?.trim(),
+                  views: viewCount,
+                  thumbnail: thumbnail?.src,
+                  brand: brand?.textContent?.trim(),
+                  releaseDate: releaseDate?.textContent?.trim(),
+                  tags: tagTexts,
+                  plot: plot?.textContent?.trim()
+                };console.log('Collected data:', data);
 
-              console.log('Missing elements:', missingElements);
+                // Check if all elements were found
+                const missingElements = [];
+                Object.entries(data).forEach(([key, value]) => {
+                  if (!value || (Array.isArray(value) && value.length === 0)) {
+                    missingElements.push(key);
+                  }
+                });
 
-              return {
-                found: missingElements.length === 0,
-                missingElements,
-                data
-              };
+                console.log('Missing elements:', missingElements);
+
+                return {
+                  found: missingElements.length === 0,
+                  missingElements,
+                  data
+                };
+              } catch (error) {
+                console.error('Error during scraping:', error);
+                return {
+                  found: false,
+                  error: error.message,
+                  data: {}
+                };
+              }
             })();
           `);
 
