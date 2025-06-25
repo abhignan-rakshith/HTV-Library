@@ -23,10 +23,78 @@
       </svg>
     </button>
     <div id="snackbar" class="snackbar"></div>
-    <script>
+    
+    <!-- Popup Modal to Display Scraped Data -->
+    <div id="dataModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title">Media Details</h2>
+          <button id="closeModal" class="close-button">&times;</button>
+        </div>
+        <table class="data-table">
+          <tr>
+            <td>Title</td>
+            <td><input type="text" id="titleField" class="data-field" readonly></td>
+          </tr>
+          <tr>
+            <td>Views</td>
+            <td><input type="text" id="viewsField" class="data-field" readonly></td>
+          </tr>
+          <tr>
+            <td>URL</td>
+            <td><input type="text" id="urlField" class="data-field" readonly></td>
+          </tr>
+          <tr>
+            <td>Thumbnail</td>
+            <td>
+              <img id="thumbnailPreview" class="data-thumbnail" src="" alt="Thumbnail preview">
+              <input type="text" id="thumbnailField" class="data-field" readonly>
+            </td>
+          </tr>
+          <tr>
+            <td>Brand</td>
+            <td><input type="text" id="brandField" class="data-field" readonly></td>
+          </tr>
+          <tr>
+            <td>Release Date</td>
+            <td><input type="text" id="releaseDateField" class="data-field" readonly></td>
+          </tr>
+          <tr>
+            <td>Tags</td>
+            <td><div id="tagsContainer" class="tags-container"></div></td>
+          </tr>
+          <tr>
+            <td>Plot</td>
+            <td><textarea id="plotField" class="data-field" rows="6"></textarea></td>
+          </tr>
+        </table>
+        <div class="action-buttons">
+          <button id="cancelButton" class="action-button cancel-button">Cancel</button>
+          <button id="saveButton" class="action-button save-button">Save to Library</button>
+        </div>
+      </div>
+    </div>      <script>
       const webview = document.getElementById('webview');
       const fab = document.getElementById('fab');
       const snackbar = document.getElementById('snackbar');
+      const dataModal = document.getElementById('dataModal');
+      const closeModal = document.getElementById('closeModal');
+      const cancelButton = document.getElementById('cancelButton');
+      const saveButton = document.getElementById('saveButton');
+
+      // Fields in the popup
+      const titleField = document.getElementById('titleField');
+      const viewsField = document.getElementById('viewsField');
+      const urlField = document.getElementById('urlField');
+      const thumbnailField = document.getElementById('thumbnailField');
+      const thumbnailPreview = document.getElementById('thumbnailPreview');
+      const brandField = document.getElementById('brandField');
+      const releaseDateField = document.getElementById('releaseDateField');
+      const tagsContainer = document.getElementById('tagsContainer');
+      const plotField = document.getElementById('plotField');
+
+      // Current scraped data
+      let currentScrapedData = null;
 
       // Forward all console messages from webview to main window
       webview.addEventListener('console-message', (e) => {
@@ -182,11 +250,45 @@
               console.log(key + ':', value);
             });
           }
-          console.log('===================\n');
-
-          if (pageData.found) {
+          console.log('===================\n');          if (pageData.found) {
             showSnackbar('Found all required elements!');
-            // Here we'll later add code to display the data in a table
+            
+            // Save the current data
+            currentScrapedData = pageData.data;
+            
+            // Populate the modal fields with the scraped data
+            titleField.value = pageData.data.title || '';
+            viewsField.value = pageData.data.views !== null ? pageData.data.views.toLocaleString() : '';
+            urlField.value = pageData.data.url || '';
+            thumbnailField.value = pageData.data.thumbnail || '';
+            
+            // Set thumbnail preview
+            if (pageData.data.thumbnail) {
+              thumbnailPreview.src = pageData.data.thumbnail;
+              thumbnailPreview.style.display = 'block';
+            } else {
+              thumbnailPreview.style.display = 'none';
+            }
+            
+            brandField.value = pageData.data.brand || '';
+            releaseDateField.value = pageData.data.releaseDate || '';
+            plotField.value = pageData.data.plot || '';
+
+            // Clear existing tags
+            tagsContainer.innerHTML = '';
+
+            // Add each tag as a tag
+            if (pageData.data.tags && pageData.data.tags.length > 0) {
+              pageData.data.tags.forEach(tag => {
+                const tagElement = document.createElement('div');
+                tagElement.className = 'tag';
+                tagElement.textContent = tag;
+                tagsContainer.appendChild(tagElement);
+              });
+            }
+
+            // Show the modal with the scraped data
+            dataModal.style.display = 'block';
           } else {
             showSnackbar('Missing elements: ' + pageData.missingElements.join(', '));
           }
@@ -210,6 +312,50 @@
         } else {
           showSnackbar('Please navigate to a media page!');
         }
+      });      // Close modal when clicking outside of it
+      window.addEventListener('click', (event) => {
+        if (event.target === dataModal) {
+          dataModal.style.display = 'none';
+        }
+      });
+      
+      // Close button event
+      closeModal.addEventListener('click', () => {
+        dataModal.style.display = 'none';
+      });
+      
+      // Cancel button event
+      cancelButton.addEventListener('click', () => {
+        dataModal.style.display = 'none';
+      });
+      
+      // Save button event
+      saveButton.addEventListener('click', () => {
+        if (currentScrapedData) {
+          // Update the plot with any edited content
+          currentScrapedData.plot = plotField.value;
+          
+          // Here we'll later add code to save to a database/file
+          console.log('Saving to library:', currentScrapedData);
+          showSnackbar('Saved to library!');
+          
+          // Close the modal after saving
+          dataModal.style.display = 'none';
+        }
+      });
+
+      // Close modal when clicking the close button
+      closeModal.addEventListener('click', () => {
+        dataModal.style.display = 'none';
+      });
+
+      cancelButton.addEventListener('click', () => {
+        dataModal.style.display = 'none';
+      });
+
+      saveButton.addEventListener('click', () => {
+        // TODO: Implement save to library functionality
+        showSnackbar('Save to library functionality not implemented yet');
       });
     </script>
   </body>
