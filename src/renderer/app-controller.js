@@ -32,8 +32,84 @@ class AppController {
 
   setupWebviewEvents() {
     this.webview.addEventListener('dom-ready', () => {
-      // Webview is ready for interaction
+      // Auto-close ads when page loads
+      this.autoCloseAds();
     });
+
+    this.webview.addEventListener('did-navigate', () => {
+      // Auto-close ads on navigation
+      setTimeout(() => this.autoCloseAds(), 1000);
+    });
+  }
+
+  async autoCloseAds() {
+    try {
+      await this.webview.executeJavaScript(`
+        (function() {
+          // Function to close ads
+          function closeAds() {
+            // Find all ad close buttons using various selectors
+            const selectors = [
+              '.unit__close',
+              'button.unit__close',
+              '[class*="unit__close"]',
+              'button:has(.btn__content):has([class*="close"])',
+              'button[class*="close"]:has(.btn__content)'
+            ];
+            
+            let closedCount = 0;
+            
+            selectors.forEach(selector => {
+              try {
+                const buttons = document.querySelectorAll(selector);
+                buttons.forEach(button => {
+                  // Check if it's actually an ad close button
+                  const content = button.textContent || '';
+                  if (content.toLowerCase().includes('close') && 
+                      content.toLowerCase().includes('ad')) {
+                    button.click();
+                    closedCount++;
+                  }
+                });
+              } catch (e) {
+                // Ignore selector errors
+              }
+            });
+            
+            // Also try to find and hide ad containers directly
+            const adContainers = document.querySelectorAll('.htvad, [class*="htvad"]');
+            adContainers.forEach(container => {
+              if (container.style) {
+                container.style.display = 'none';
+                closedCount++;
+              }
+            });
+            
+            return closedCount;
+          }
+          
+          // Close ads immediately
+          let closed = closeAds();
+          
+          // Set up observer for dynamically loaded ads
+          const observer = new MutationObserver(() => {
+            closeAds();
+          });
+          
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true
+          });
+          
+          // Cleanup observer after 30 seconds to avoid memory leaks
+          setTimeout(() => observer.disconnect(), 30000);
+          
+          return closed;
+        })()
+      `);
+    } catch (error) {
+      // Silently fail if webview isn't ready
+    }
   }
 
   setupFABEvents() {
