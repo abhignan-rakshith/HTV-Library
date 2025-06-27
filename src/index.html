@@ -2,19 +2,22 @@
 <html>
   <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: wss:;" />
     <title>Hanime.tv Library</title>
     <link rel="stylesheet" href="index.css" />
   </head>
   <body>
+    <!-- Main webview for browsing the site -->
     <webview
       id="webview"
       src="https://hanime.tv"
       allowfullscreen
-      webpreferences="allowRunningInsecureContent, javascript=yes"
-      useragent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
-      partition="persist:main"
-      httpreferrer="https://hanime.tv"
-    ></webview>
+      webpreferences="allowRunningInsecureContent=yes, javascript=yes"
+      useragent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      partition="persist:main">
+    </webview>
+
+    <!-- Floating action button for library operations -->
     <button id="fab" class="floating-action-button" title="Library">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
         <path fill="none" d="M0 0h24v24H0z"/>
@@ -22,8 +25,9 @@
         <path d="M8 5h8v2H8zM8 9h8v2H8zM8 13h8v2H8z" fill="currentColor"/>
       </svg>
     </button>
+
+    <!-- Notification snackbar -->
     <div id="snackbar" class="snackbar"></div>
-    
     <!-- Popup Modal to Display Scraped Data -->
     <div id="dataModal" class="modal">
       <div class="modal-content">

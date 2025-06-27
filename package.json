@@ -1,8 +1,8 @@
 {
   "name": "htv-library",
-  "productName": "htv-library",
+  "productName": "HTV Library",
   "version": "1.0.0",
-  "description": "This is a fully integrated HTV library application built with Electron.",
+  "description": "A clean and efficient library management application for media content",
   "main": "src/index.js",
   "scripts": {
     "start": "electron-forge start",
@@ -11,15 +11,13 @@
     "publish": "electron-forge publish",
     "lint": "echo \"No linting configured\""
   },
-  "keywords": [],
+  "keywords": ["electron", "library", "media", "manager"],
   "author": {
     "name": "Abhignan Rakshith",
     "email": "abhignanrakshith@icloud.com"
   },
   "license": "MIT",
   "dependencies": {
-    "@cliqz/adblocker-electron": "^1.34.0",
-    "cross-fetch": "^4.1.0",
     "electron-squirrel-startup": "^1.0.1"
   },
   "devDependencies": {
