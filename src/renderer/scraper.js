@@ -8,7 +8,7 @@ class MediaScraper {
       metaItem: '.hvpimbc-item',
       metaHeader: '.hvpimbc-header',
       metaText: '.hvpimbc-text',
-      tagLinks: 'a[href^="/browse/tags/"]',
+      tagLinks: '.hvpis-text a[href^="/browse/tags/"]',
       plot: '.hvpist-description'
     };
   }
@@ -17,7 +17,17 @@ class MediaScraper {
     try {
       const pageData = await webview.executeJavaScript(`
         (function() {
-          const selectors = ${JSON.stringify(this.selectors)};
+          const selectors = {
+            title: '.tv-title',
+            views: '.tv-views',
+            thumbnail: '.hvpi-cover',
+            brand: '.hvpimbc-text[href*="/browse/brands/"]',
+            metaItem: '.hvpimbc-item',
+            metaHeader: '.hvpimbc-header',
+            metaText: '.hvpimbc-text',
+            tagLinks: '.hvpis-text a[href^="/browse/tags/"]',
+            plot: '.hvpist-description'
+          };
           
           const title = document.querySelector(selectors.title);
           const views = document.querySelector(selectors.views);
@@ -33,21 +43,46 @@ class MediaScraper {
             }
           });
           
-          const tagLinks = Array.from(document.querySelectorAll(selectors.tagLinks));
-          const tags = tagLinks
-            .map(link => {
-              const href = link.getAttribute('href');
-              return href ? href.split('/browse/tags/')[1] : null;
-            })
-            .filter(Boolean);
+          let currentUrl = window.location.href.split('?')[0];
+          
+          let tagTexts = [];
+          try {
+            const tagLinks = document.querySelectorAll(selectors.tagLinks);
+            if (tagLinks.length > 0) {
+              tagTexts = [...new Set(
+                Array.from(tagLinks)
+                  .slice(0, 10)
+                  .map(link => {
+                    const href = link.getAttribute('href');
+                    if (href) {
+                      const tag = href.split('/browse/tags/')[1];
+                      return decodeURIComponent(tag);
+                    }
+                    const content = link.querySelector('.btn__content');
+                    return content ? content.textContent.trim() : null;
+                  })
+                  .filter(Boolean)
+              )];
+            }
+          } catch (tagError) {
+            console.error('Tag extraction error:', tagError);
+            tagTexts = [];
+          }
+          
+          let viewCount = null;
+          if (views && views.textContent) {
+            const cleanViews = views.textContent.trim().split(' ')[0].replace(/,/g, '');
+            viewCount = parseInt(cleanViews, 10);
+          }
           
           const data = {
+            url: currentUrl,
             title: title?.textContent?.trim() || null,
-            views: views?.textContent?.trim() || null,
+            views: viewCount,
             thumbnail: thumbnail?.src || null,
             brand: brand?.textContent?.trim() || null,
             releaseDate: releaseDate?.textContent?.trim() || null,
-            tags: tags,
+            tags: tagTexts,
             plot: plot?.textContent?.trim() || null
           };
           
@@ -63,7 +98,7 @@ class MediaScraper {
             missingElements,
             data
           };
-        })();
+        })()
       `);
       
       return pageData;
