@@ -11,14 +11,21 @@
     "publish": "electron-forge publish",
     "lint": "echo \"No linting configured\""
   },
-  "keywords": ["electron", "library", "media", "manager"],
+  "keywords": [
+    "electron",
+    "library",
+    "media",
+    "manager"
+  ],
   "author": {
     "name": "Abhignan Rakshith",
     "email": "abhignanrakshith@icloud.com"
   },
   "license": "MIT",
   "dependencies": {
-    "electron-squirrel-startup": "^1.0.1"
+    "better-sqlite3": "^12.2.0",
+    "electron-squirrel-startup": "^1.0.1",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.8.1",

@@ -1,5 +1,5 @@
 /**
- * ImagePageController - Orchestrates image page functionality
+ * ImagePageController - Orchestrates image page functionality with database integration
  */
 class ImagePageController {
   constructor(webview, uiManager) {
@@ -8,7 +8,9 @@ class ImagePageController {
     this.selectionManager = new ImageSelectionManager();
     this.injector = new ImageInjector();
     this.counterUpdateInterval = null;
-    this.settingsManager = null; // Will be injected by AppController
+    this.settingsManager = null;
+    this.databaseManager = null;
+    this.duplicateResolver = null;
     
     this.setupEventListeners();
   }
@@ -18,7 +20,6 @@ class ImagePageController {
    * @private
    */
   setupEventListeners() {
-    // Listen for selection changes to update UI
     this.selectionManager.onSelectionChange((data) => {
       this.uiManager.updateFABCounter(data.count);
     });
@@ -30,6 +31,22 @@ class ImagePageController {
    */
   setSettingsManager(settingsManager) {
     this.settingsManager = settingsManager;
+  }
+
+  /**
+   * Set the database manager instance
+   * @param {DatabaseManager} databaseManager
+   */
+  setDatabaseManager(databaseManager) {
+    this.databaseManager = databaseManager;
+  }
+
+  /**
+   * Set the duplicate resolver instance
+   * @param {DuplicateResolver} duplicateResolver
+   */
+  setDuplicateResolver(duplicateResolver) {
+    this.duplicateResolver = duplicateResolver;
   }
 
   /**
@@ -65,7 +82,6 @@ class ImagePageController {
     
     this.selectionManager.enterSelectionMode();
     
-    // Inject click handlers
     const injected = await this.injector.injectClickHandler(this.webview);
     if (!injected) {
       this.uiManager.showSnackbar('Failed to setup image selection');
@@ -85,7 +101,6 @@ class ImagePageController {
   async processSelectedImages() {
     console.log('ImagePageController: Processing selected images...');
     
-    // Get current selections from webview (this is the real state)
     const selectedUrls = await this.injector.getSelectedUrls(this.webview);
     console.log('ImagePageController: URLs from webview:', selectedUrls.length);
     
@@ -94,23 +109,22 @@ class ImagePageController {
       return;
     }
 
-    // Check if database is configured before showing save modal
     if (!this.isDatabaseConfigured()) {
       this.uiManager.showDatabaseConfigError('saving images');
       return;
     }
 
     // Update internal state to match webview reality
-    this.selectionManager.exitSelectionMode(); // Clear old state
-    this.selectionManager.enterSelectionMode(); // Re-enter clean
+    this.selectionManager.exitSelectionMode();
+    this.selectionManager.enterSelectionMode();
     selectedUrls.forEach(url => this.selectionManager.toggleSelection(url));
     
-    // Show save modal
+    // Show save modal (duplicate checking will happen when user clicks save)
     this.uiManager.showImageSaveModal(selectedUrls.length);
   }
 
   /**
-   * Save selected images with metadata
+   * Save selected images with metadata and duplicate detection
    * @param {string} tag - Required tag for images
    * @param {string} comments - Optional comments
    * @returns {Promise<void>}
@@ -121,9 +135,13 @@ class ImagePageController {
       return;
     }
 
-    // Double-check database configuration (though should be caught earlier)
     if (!this.isDatabaseConfigured()) {
       this.uiManager.showDatabaseConfigError('saving images');
+      return;
+    }
+
+    if (!this.databaseManager || !this.duplicateResolver) {
+      this.uiManager.showSnackbar('Database not ready - please try again');
       return;
     }
 
@@ -137,18 +155,36 @@ class ImagePageController {
       savedAt: new Date().toISOString()
     };
 
+    console.log('ImagePageController: Checking for image duplicates...');
+
     try {
-      // TODO: Add actual database saving logic here
-      console.log('Saving images with data:', imageData);
-      console.log('Database path:', this.settingsManager ? this.settingsManager.getDatabasePath() : 'Not configured');
-      
-      this.uiManager.showSnackbar(`Successfully saved ${selectedUrls.length} images with tag "${tag}"!`);
-      
-      // Clear selections and exit mode
-      await this.clearSelectionsAndExit();
+      // Check for duplicates and handle resolution
+      await this.duplicateResolver.checkAndResolveImageDuplicates(
+        imageData,
+        (result) => {
+          if (result.success) {
+            let message = '';
+            if (result.saved && result.skipped) {
+              message = `Saved ${result.saved} images, skipped ${result.skipped} duplicates`;
+            } else if (result.saved) {
+              message = `Successfully saved ${result.saved} images with tag "${tag}"!`;
+            } else {
+              message = 'Images processed successfully!';
+            }
+            
+            this.uiManager.showSnackbar(message);
+            
+            // Clear selections and exit mode after successful save
+            this.clearSelectionsAndExit();
+            
+          } else {
+            this.uiManager.showSnackbar('Error saving images: ' + (result.error || 'Unknown error'));
+          }
+        }
+      );
       
     } catch (error) {
-      console.error('Error saving images:', error);
+      console.error('Error in duplicate detection/saving:', error);
       this.uiManager.showSnackbar('Error saving images to library');
     }
   }
@@ -158,8 +194,8 @@ class ImagePageController {
    * @returns {Promise<void>}
    */
   async cancelImageSelection() {
-    // Just close modal, keep selections
-    console.log('Image save cancelled');
+    console.log('ImagePageController: Image save cancelled');
+    // Just close modal, keep selections for now
   }
 
   /**
@@ -225,14 +261,9 @@ class ImagePageController {
   async forceCompleteReset() {
     console.log('ImagePageController: Force complete reset...');
     
-    // Stop any ongoing processes
     this.stopCounterUpdates();
-    
-    // Reset all state
     this.selectionManager.exitSelectionMode();
     this.uiManager.clearFABCounter();
-    
-    // Reset webview state
     await this.resetInjectionState();
     
     console.log('ImagePageController: Force reset complete');
@@ -267,11 +298,57 @@ class ImagePageController {
   }
 
   /**
+   * Get images from database by source URL (for debugging/verification)
+   * @param {string} sourceUrl - Source page URL
+   * @returns {Promise<Array>} - Array of image records
+   */
+  async getImagesBySource(sourceUrl) {
+    if (!this.databaseManager) return [];
+    
+    try {
+      // This would be implemented in the DatabaseManager
+      // return await this.databaseManager.getImagesBySource(sourceUrl);
+      console.log('Getting images for source:', sourceUrl);
+      return [];
+    } catch (error) {
+      console.error('Error getting images by source:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get image statistics for current page
+   * @returns {Promise<Object>} - Image statistics
+   */
+  async getImageStats() {
+    if (!this.databaseManager) return null;
+    
+    try {
+      const sourceUrl = this.webview.getURL();
+      const stats = {
+        currentPageUrl: sourceUrl,
+        selectedCount: this.selectionManager.getSelectionCount(),
+        isSelectionMode: this.selectionManager.isInSelectionMode(),
+        // Add more stats as needed
+      };
+      
+      // Could add database queries here for existing images from this source
+      return stats;
+    } catch (error) {
+      console.error('Error getting image stats:', error);
+      return null;
+    }
+  }
+
+  /**
    * Cleanup resources
    */
   destroy() {
     this.stopCounterUpdates();
     this.selectionManager.onSelectionChangeCallbacks = [];
+    this.settingsManager = null;
+    this.databaseManager = null;
+    this.duplicateResolver = null;
   }
 
   /**
@@ -283,7 +360,8 @@ class ImagePageController {
       isSelectionMode: this.selectionManager.isInSelectionMode(),
       selectedCount: this.selectionManager.getSelectionCount(),
       selectedUrls: this.selectionManager.getSelectedUrls(),
-      isDatabaseConfigured: this.isDatabaseConfigured()
+      isDatabaseConfigured: this.isDatabaseConfigured(),
+      databaseReady: !!this.databaseManager && !!this.duplicateResolver
     };
   }
 }

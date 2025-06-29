@@ -3,12 +3,14 @@ class AppController {
     this.uiManager = new UIManager();
     this.scraper = new MediaScraper();
     this.settingsManager = null;
+    this.databaseManager = new DatabaseManager();
+    this.duplicateResolver = null;
     this.webview = null;
     this.fab = null;
     this.currentData = null;
     this.imagePageController = null;
     this.currentPage = 'home-page';
-    this.lastWebviewUrl = null; // Track URL changes
+    this.lastWebviewUrl = null;
     
     this.init();
   }
@@ -31,12 +33,23 @@ class AppController {
     console.log('Webview found:', !!this.webview);
     console.log('FAB found:', !!this.fab);
 
-    // Set up tab navigation first (this should always work)
+    // Set up tab navigation first
     this.setupTabNavigation();
 
-    // Initialize settings manager (don't let this block other setup)
+    // Initialize settings manager
     try {
       this.settingsManager = new SettingsManager(this.uiManager);
+      
+      // Initialize database when settings change
+      this.settingsManager.onDatabaseConfigured = (dbPath) => {
+        this.initializeDatabase(dbPath);
+      };
+      
+      // Check if database is already configured
+      if (this.settingsManager.isDatabaseConfigured()) {
+        await this.initializeDatabase(this.settingsManager.getDatabasePath());
+      }
+      
     } catch (error) {
       console.error('Error initializing settings manager:', error);
     }
@@ -47,6 +60,9 @@ class AppController {
       this.imagePageController = new ImagePageController(this.webview, this.uiManager);
       if (this.settingsManager) {
         this.imagePageController.setSettingsManager(this.settingsManager);
+      }
+      if (this.databaseManager) {
+        this.imagePageController.setDatabaseManager(this.databaseManager);
       }
 
       this.setupWebviewEvents();
@@ -62,6 +78,43 @@ class AppController {
     this.uiManager.loadPlaylistsFromDatabase = () => this.loadPlaylistsFromDatabase();
     
     console.log('UI setup complete');
+  }
+
+  /**
+   * Initialize database and duplicate resolver
+   * @param {string} dbPath - Database file path
+   * @returns {Promise<void>}
+   */
+  async initializeDatabase(dbPath) {
+    try {
+      console.log('Initializing database:', dbPath);
+      
+      const success = await this.databaseManager.initialize(dbPath);
+      
+      if (success) {
+        // Initialize duplicate resolver
+        this.duplicateResolver = new DuplicateResolver(this.uiManager, this.databaseManager);
+        
+        // Update image controller with database manager
+        if (this.imagePageController) {
+          this.imagePageController.setDatabaseManager(this.databaseManager);
+          this.imagePageController.setDuplicateResolver(this.duplicateResolver);
+        }
+        
+        console.log('Database and duplicate resolver initialized successfully');
+        
+        // Load playlists after database is ready
+        await this.loadPlaylistsFromDatabase();
+        
+      } else {
+        console.error('Failed to initialize database');
+        this.uiManager.showSnackbar('Database initialization failed');
+      }
+      
+    } catch (error) {
+      console.error('Error initializing database:', error);
+      this.uiManager.showSnackbar('Database connection error');
+    }
   }
 
   setupWebviewEvents() {
@@ -84,16 +137,12 @@ class AppController {
     });
   }
 
-  /**
-   * Handle webview URL changes and clear state when leaving images page
-   */
   async handleWebviewUrlChange() {
     if (!this.webview) return;
 
     const currentUrl = this.webview.getURL();
     console.log('AppController: URL changed to:', currentUrl);
 
-    // Check if we're leaving the images page
     if (this.lastWebviewUrl && this.scraper.isImagesPage(this.lastWebviewUrl)) {
       if (!this.scraper.isImagesPage(currentUrl)) {
         console.log('AppController: Left images page, clearing state');
@@ -192,10 +241,9 @@ class AppController {
     }
 
     try {
-      // TODO: Replace with actual database query when implemented
-      // For now, return empty array since DB layer isn't built yet
-      const playlists = await this.queryPlaylistsFromDatabase();
+      const playlists = await this.databaseManager.getPlaylists();
       this.uiManager.populatePlaylistDropdown(playlists);
+      console.log('AppController: Loaded', playlists.length, 'playlists');
       
     } catch (error) {
       console.error('AppController: Error loading playlists:', error);
@@ -203,24 +251,6 @@ class AppController {
     }
   }
 
-  /**
-   * Query playlists from database - placeholder for actual implementation
-   * @returns {Promise<string[]>}
-   * @private
-   */
-  async queryPlaylistsFromDatabase() {
-    // TODO: Implement actual database query
-    // For now, return empty array since DB layer isn't implemented yet
-    // This will be replaced with actual SQL query: 
-    // SELECT DISTINCT playlist FROM shows WHERE playlist IS NOT NULL AND playlist != '' ORDER BY playlist
-    
-    console.log('AppController: Querying playlists (placeholder implementation)');
-    return [];
-  }
-
-  /**
-   * Setup tab navigation functionality
-   */
   setupTabNavigation() {
     console.log('Setting up tab navigation...');
     
@@ -242,36 +272,28 @@ class AppController {
     });
   }
 
-  /**
-   * Switch between app pages
-   * @param {string} pageId - The ID of the page to switch to
-   */
   async switchToPage(pageId) {
     console.log('AppController: Switching to page:', pageId);
     
     const tabButtons = document.querySelectorAll('.tab-button');
     const pages = document.querySelectorAll('.page');
 
-    // Force complete reset when navigating away from home page (tab switching)
     if (this.currentPage === 'home-page' && pageId !== 'home-page') {
       console.log('AppController: Leaving home page via tab, force reset image state');
       await this.forceResetImageState();
     }
 
-    // Update tab active states
     tabButtons.forEach(button => {
       const isActive = button.getAttribute('data-page') === pageId;
       button.classList.toggle('active', isActive);
     });
 
-    // Update page visibility
     pages.forEach(page => {
       const isActive = page.id === pageId;
       page.classList.toggle('active', isActive);
       console.log(`Page ${page.id}: active = ${isActive}`);
     });
 
-    // Update FAB visibility (only show on home page)
     if (this.fab) {
       this.fab.style.display = pageId === 'home-page' ? 'flex' : 'none';
     }
@@ -280,17 +302,12 @@ class AppController {
     console.log('AppController: Page switch complete, current page:', this.currentPage);
   }
 
-  /**
-   * Force complete reset of image selection state
-   * @returns {Promise<void>}
-   */
   async forceResetImageState() {
     console.log('AppController: Force resetting image state...');
     
     if (this.imagePageController) {
       await this.imagePageController.forceCompleteReset();
     } else {
-      // Fallback: clear FAB counter directly
       this.uiManager.clearFABCounter();
     }
     
@@ -338,31 +355,62 @@ class AppController {
     }
   }
 
-  /**
-   * Check if database is configured
-   * @returns {boolean}
-   * @private
-   */
   isDatabaseConfigured() {
     return this.settingsManager ? this.settingsManager.isDatabaseConfigured() : false;
   }
 
-  handleVideoSave(plotValue, playlistValue) {
-    // Check if database is configured before saving
+  /**
+   * Handle video save with duplicate detection
+   * @param {string} plotValue - Plot text
+   * @param {string} playlistValue - Playlist name
+   */
+  async handleVideoSave(plotValue, playlistValue) {
     if (!this.isDatabaseConfigured()) {
       this.uiManager.showDatabaseConfigError('saving video');
       return;
     }
 
+    if (!this.duplicateResolver) {
+      this.uiManager.showSnackbar('Database not ready - please try again');
+      return;
+    }
+
     if (this.currentData) {
+      // Update data with user inputs
       this.currentData.plot = plotValue;
-      this.currentData.playlist = playlistValue; // Add playlist to data
-      this.uiManager.showSnackbar('Saved to library!');
+      this.currentData.playlist = playlistValue;
       
-      // TODO: Add actual database save functionality here
-      console.log('Video data saved:', this.currentData);
-      console.log('Database path:', this.settingsManager.getDatabasePath());
-      console.log('Playlist (capitalized):', playlistValue);
+      console.log('AppController: Checking for video duplicates...');
+      
+      // Check for duplicates and handle resolution
+      await this.duplicateResolver.checkAndResolveVideoDuplicate(
+        this.currentData,
+        (result) => {
+          if (result.success) {
+            let message = '';
+            switch (result.action) {
+              case 'inserted':
+                message = 'Video saved to library!';
+                break;
+              case 'updated':
+                message = 'Video updated in library!';
+                break;
+              case 'kept_existing':
+                message = 'Existing video kept - no changes made';
+                break;
+              default:
+                message = 'Video processed successfully!';
+            }
+            this.uiManager.showSnackbar(message);
+            
+            // Reload playlists in case a new one was added
+            this.loadPlaylistsFromDatabase();
+            
+          } else {
+            this.uiManager.showSnackbar('Failed to save video: ' + (result.error || 'Unknown error'));
+          }
+        }
+      );
     }
   }
 
@@ -371,7 +419,6 @@ class AppController {
   }
 
   async handleImageSave(tag, comments) {
-    // Check if database is configured before saving
     if (!this.isDatabaseConfigured()) {
       this.uiManager.showDatabaseConfigError('saving images');
       return;
@@ -399,7 +446,8 @@ class AppController {
       imageSelection: null,
       isDatabaseConfigured: this.isDatabaseConfigured(),
       currentPage: this.currentPage,
-      settings: this.settingsManager ? this.settingsManager.getSettings() : {}
+      settings: this.settingsManager ? this.settingsManager.getSettings() : {},
+      databaseReady: !!this.duplicateResolver
     };
 
     if (this.imagePageController) {
@@ -409,34 +457,44 @@ class AppController {
     return state;
   }
 
-  /**
-   * Navigate to settings page
-   */
   openSettings() {
     this.switchToPage('settings-page');
   }
 
-  /**
-   * Navigate to home page
-   */
   openHome() {
     this.switchToPage('home-page');
   }
 
-  /**
-   * Check if currently on settings page
-   * @returns {boolean}
-   */
   isOnSettingsPage() {
     return this.currentPage === 'settings-page';
   }
 
   /**
-   * Cleanup resources
+   * Get database statistics for display
+   * @returns {Promise<Object>}
    */
+  async getDatabaseStats() {
+    if (!this.databaseManager || !this.isDatabaseConfigured()) {
+      return null;
+    }
+    
+    try {
+      return await this.databaseManager.getStats();
+    } catch (error) {
+      console.error('Error getting database stats:', error);
+      return null;
+    }
+  }
+
   destroy() {
     if (this.imagePageController) {
       this.imagePageController.destroy();
+    }
+    if (this.duplicateResolver) {
+      this.duplicateResolver.destroy();
+    }
+    if (this.databaseManager) {
+      this.databaseManager.close();
     }
   }
 }
