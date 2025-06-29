@@ -7,24 +7,110 @@
     <link rel="stylesheet" href="index.css" />
   </head>
   <body>
-    <!-- Main webview for browsing the site -->
-    <webview
-      id="webview"
-      src="https://hanime.tv"
-      allowfullscreen
-      webpreferences="allowRunningInsecureContent=yes, javascript=yes"
-      useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      partition="persist:main">
-    </webview>
+    <!-- Main app container -->
+    <div id="app-container">
+      <!-- Home page (webview) -->
+      <div id="home-page" class="page active">
+        <webview
+          id="webview"
+          src="https://hanime.tv"
+          allowfullscreen
+          webpreferences="allowRunningInsecureContent=yes, javascript=yes"
+          useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+          partition="persist:main">
+        </webview>
 
-    <!-- Floating action button for library operations -->
-    <button id="fab" class="floating-action-button" title="Library">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-        <path fill="none" d="M0 0h24v24H0z"/>
-        <path d="M4 4c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2v16c0 1.1-.9 2-2 2H6c-1.1 0-2-.9-2-2V4zm2 0v16h12V4H6z" fill="currentColor"/>
-        <path d="M8 5h8v2H8zM8 9h8v2H8zM8 13h8v2H8z" fill="currentColor"/>
-      </svg>
-    </button>
+        <!-- Floating action button for library operations -->
+        <button id="fab" class="floating-action-button" title="Library">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <path fill="none" d="M0 0h24v24H0z"/>
+            <path d="M4 4c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2v16c0 1.1-.9 2-2 2H6c-1.1 0-2-.9-2-2V4zm2 0v16h12V4H6z" fill="currentColor"/>
+            <path d="M8 5h8v2H8zM8 9h8v2H8zM8 13h8v2H8z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Settings page -->
+      <div id="settings-page" class="page">
+        <div class="settings-container">
+          <div class="settings-header">
+            <h1 class="settings-title">Settings</h1>
+            <p class="settings-subtitle">Configure your HTV Library preferences</p>
+          </div>
+
+          <div class="settings-content">
+            <!-- Database Configuration Section -->
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <h2 class="settings-section-title">Database Configuration</h2>
+                <p class="settings-section-description">Choose where to store your media library database</p>
+              </div>
+
+              <div class="settings-row">
+                <label class="settings-label">Database Location</label>
+                <div class="settings-input-group">
+                  <input type="text" id="dbPathInput" class="settings-input" placeholder="Select database location..." readonly>
+                  <button id="selectDbPathBtn" class="settings-button primary">Browse</button>
+                </div>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-info">
+                  <div id="dbStatus" class="db-status">
+                    <span class="status-icon">⚠️</span>
+                    <span class="status-text">No database configured</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="settings-actions">
+                <button id="saveSettingsBtn" class="settings-button success" disabled>Save Configuration</button>
+                <button id="testConnectionBtn" class="settings-button secondary" disabled>Test Connection</button>
+              </div>
+            </div>
+
+            <!-- App Information Section -->
+            <div class="settings-section">
+              <div class="settings-section-header">
+                <h2 class="settings-section-title">Application Information</h2>
+              </div>
+
+              <div class="settings-row">
+                <label class="settings-label">Version</label>
+                <span class="settings-value" id="appVersion">1.0.0</span>
+              </div>
+
+              <div class="settings-row">
+                <label class="settings-label">Platform</label>
+                <span class="settings-value" id="appPlatform">Loading...</span>
+              </div>
+
+              <div class="settings-row">
+                <label class="settings-label">Electron Version</label>
+                <span class="settings-value" id="electronVersion">Loading...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom navigation tabs -->
+    <div class="bottom-tabs">
+      <button id="homeTab" class="tab-button active" data-page="home-page">
+        <svg class="tab-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        <span class="tab-label">Home</span>
+      </button>
+      
+      <button id="settingsTab" class="tab-button" data-page="settings-page">
+        <svg class="tab-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.82,11.69,4.82,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+        </svg>
+        <span class="tab-label">Settings</span>
+      </button>
+    </div>
 
     <!-- Notification snackbar -->
     <div id="snackbar" class="snackbar"></div>
@@ -59,6 +145,17 @@
           <tr>
             <td>Brand</td>
             <td><input type="text" id="brandField" class="data-field" readonly></td>
+          </tr>
+          <tr>
+            <td>User Playlist</td>
+            <td>
+              <div class="playlist-input-container">
+                <input type="text" id="playlistField" class="data-field playlist-input" placeholder="Enter or select playlist..." list="playlistDatalist">
+                <datalist id="playlistDatalist">
+                  <!-- Options will be populated dynamically -->
+                </datalist>
+              </div>
+            </td>
           </tr>
           <tr>
             <td>Release Date</td>
@@ -109,20 +206,28 @@
     </div>
 
     <!-- Load application modules in dependency order -->
-    <script src="renderer/ui-manager.js"></script>
-    <script src="renderer/scraper.js"></script>
+    <script>
+      console.log('Starting to load scripts...');
+      console.log('Current location:', window.location.href);
+    </script>
     
-    <!-- New modular image selection components -->
-    <script src="renderer/image-selection-manager.js"></script>
-    <script src="renderer/image-injector.js"></script>
-    <script src="renderer/image-page-controller.js"></script>
-    
-    <!-- Main application controller -->
-    <script src="renderer/app-controller.js"></script>
+    <script src="./renderer/ui-manager.js"></script>
+    <script src="./renderer/scraper.js"></script>
+    <script src="./renderer/image-selection-manager.js"></script>
+    <script src="./renderer/image-injector.js"></script>
+    <script src="./renderer/image-page-controller.js"></script>
+    <script src="./renderer/settings-manager.js"></script>
+    <script src="./renderer/app-controller.js"></script>
     
     <!-- Initialize application -->
     <script>
-      new AppController();
+      console.log('All scripts loaded, initializing app...');
+      try {
+        new AppController();
+        console.log('AppController initialized successfully');
+      } catch (error) {
+        console.error('Error initializing AppController:', error);
+      }
     </script>
   </body>
 </html>

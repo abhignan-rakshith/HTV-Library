@@ -81,14 +81,16 @@ class MediaScraper {
             views: viewCount,
             thumbnail: thumbnail?.src || null,
             brand: brand?.textContent?.trim() || null,
+            playlist: null, // User input field - initially empty
             releaseDate: releaseDate?.textContent?.trim() || null,
             tags: tagTexts,
             plot: plot?.textContent?.trim() || null
           };
           
+          // Don't count playlist as missing since it's user input
           const missingElements = [];
           Object.entries(data).forEach(([key, value]) => {
-            if (!value || (Array.isArray(value) && value.length === 0)) {
+            if (key !== 'playlist' && (!value || (Array.isArray(value) && value.length === 0))) {
               missingElements.push(key);
             }
           });
