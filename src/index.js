@@ -9,12 +9,14 @@ let mainWindow;
 
 const registerShortcuts = () => {
   globalShortcut.register('F11', () => {
-    const isFullScreen = mainWindow.isFullScreen();
-    mainWindow.setFullScreen(!isFullScreen);
+    if (mainWindow) {
+      const isFullScreen = mainWindow.isFullScreen();
+      mainWindow.setFullScreen(!isFullScreen);
+    }
   });
 
   globalShortcut.register('Escape', () => {
-    if (mainWindow.isFullScreen()) {
+    if (mainWindow && mainWindow.isFullScreen()) {
       mainWindow.setFullScreen(false);
     }
   });
@@ -29,18 +31,33 @@ const createWindow = async () => {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: false,
-      allowRunningInsecureContent: true,
+      webSecurity: false, // Required for external content
+      allowRunningInsecureContent: true, // Required for some media sites
       webviewTag: true,
       preload: path.join(__dirname, 'preload.js'),
     },
+  });
+
+  // Handle webview attachment with minimal logging
+  mainWindow.webContents.on('did-attach-webview', (event, webContents) => {
+    // Set window open handler to prevent popups
+    webContents.setWindowOpenHandler(() => {
+      return { action: 'deny' };
+    });
   });
 
   await mainWindow.loadFile(path.join(__dirname, 'index.html'));
   registerShortcuts();
 };
 
-app.on('ready', createWindow);
+app.on('ready', () => {
+  // Set app user model ID for Windows taskbar grouping
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('com.htv.library');
+  }
+  
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   globalShortcut.unregisterAll();
@@ -55,3 +72,17 @@ app.on('activate', () => {
     createWindow();
   }
 });
+
+// Handle second instance for single instance enforcement
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}

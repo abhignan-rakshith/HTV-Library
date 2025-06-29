@@ -2,6 +2,7 @@ class UIManager {
   constructor() {
     this.snackbar = document.getElementById('snackbar');
     this.snackbarTimeout = null;
+    this.fabCounter = null;
   }
 
   showSnackbar(message, duration = 1500) {
@@ -72,6 +73,32 @@ class UIManager {
     modal.style.display = 'none';
   }
 
+  showImageSaveModal(imageCount) {
+    const modal = document.getElementById('imageSaveModal');
+    const imageCountDisplay = document.getElementById('imageCountDisplay');
+    const tagField = document.getElementById('imageTagField');
+    const commentsField = document.getElementById('imageCommentsField');
+
+    // Update image count
+    imageCountDisplay.textContent = imageCount;
+
+    // Clear previous values
+    tagField.value = '';
+    commentsField.value = '';
+
+    // Focus on tag field
+    setTimeout(() => {
+      tagField.focus();
+    }, 100);
+
+    modal.style.display = 'block';
+  }
+
+  hideImageSaveModal() {
+    const modal = document.getElementById('imageSaveModal');
+    modal.style.display = 'none';
+  }
+
   setupModalEvents(onSave, onCancel) {
     const modal = document.getElementById('dataModal');
     const closeModal = document.getElementById('closeModal');
@@ -95,6 +122,90 @@ class UIManager {
       if (onSave) onSave(plotField.value);
       this.hideModal();
     });
+  }
+
+  setupImageSaveModalEvents(onSave, onCancel) {
+    const modal = document.getElementById('imageSaveModal');
+    const closeModal = document.getElementById('closeImageModal');
+    const cancelButton = document.getElementById('cancelImageButton');
+    const saveButton = document.getElementById('saveImageButton');
+    const tagField = document.getElementById('imageTagField');
+    const commentsField = document.getElementById('imageCommentsField');
+
+    // Close modal when clicking outside
+    window.addEventListener('click', (event) => {
+      if (event.target === modal) {
+        this.hideImageSaveModal();
+      }
+    });
+
+    // Close button
+    closeModal.addEventListener('click', () => {
+      this.hideImageSaveModal();
+      if (onCancel) onCancel();
+    });
+
+    // Cancel button
+    cancelButton.addEventListener('click', () => {
+      this.hideImageSaveModal();
+      if (onCancel) onCancel();
+    });
+
+    // Save button
+    saveButton.addEventListener('click', () => {
+      const tag = tagField.value.trim();
+      const comments = commentsField.value.trim();
+
+      if (!tag) {
+        tagField.focus();
+        tagField.style.borderColor = '#f44336';
+        this.showSnackbar('Tag is required!');
+        return;
+      }
+
+      if (onSave) {
+        onSave(tag, comments);
+        this.hideImageSaveModal();
+      }
+    });
+
+    // Enter key to save (when tag field is focused)
+    tagField.addEventListener('keypress', (event) => {
+      if (event.key === 'Enter') {
+        saveButton.click();
+      }
+    });
+
+    // Reset border color when typing
+    tagField.addEventListener('input', () => {
+      tagField.style.borderColor = '';
+    });
+  }
+
+  updateFABCounter(count) {
+    const fab = this.getFAB();
+    if (!fab) return;
+
+    // Create counter badge if it doesn't exist
+    if (!this.fabCounter) {
+      this.fabCounter = document.createElement('div');
+      this.fabCounter.className = 'fab-counter';
+      fab.appendChild(this.fabCounter);
+    }
+
+    // Update counter text and visibility
+    if (count > 0) {
+      this.fabCounter.textContent = count;
+      this.fabCounter.classList.remove('hidden');
+    } else {
+      this.fabCounter.classList.add('hidden');
+    }
+  }
+
+  clearFABCounter() {
+    if (this.fabCounter) {
+      this.fabCounter.classList.add('hidden');
+    }
   }
 
   getFAB() {

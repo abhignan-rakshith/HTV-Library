@@ -1,10 +1,11 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Whitelist of allowed IPC channels for security
-const ALLOWED_CHANNELS = ['mouse-top-edge'];
+// Secure IPC channel whitelist
+const ALLOWED_CHANNELS = ['app-version', 'window-controls'];
 
-// Expose secure IPC methods to renderer process
-contextBridge.exposeInMainWorld('electron', {
+// Expose secure APIs to renderer process
+contextBridge.exposeInMainWorld('electronAPI', {
+  // Secure IPC communication
   send: (channel, data) => {
     if (ALLOWED_CHANNELS.includes(channel)) {
       ipcRenderer.send(channel, data);
@@ -15,5 +16,20 @@ contextBridge.exposeInMainWorld('electron', {
     if (ALLOWED_CHANNELS.includes(channel)) {
       ipcRenderer.on(channel, (event, ...args) => func(...args));
     }
+  },
+
+  // App information
+  getVersion: () => {
+    return process.versions.electron;
+  },
+
+  // Platform information
+  getPlatform: () => {
+    return process.platform;
   }
 });
+
+// Prevent node integration leakage
+delete window.require;
+delete window.exports;
+delete window.module;

@@ -2,8 +2,8 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: wss:;" />
-    <title>Hanime.tv Library</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; media-src 'self' data: blob: https: http:; connect-src 'self' https: wss: http:; img-src 'self' data: https: http:;" />
+    <title>HTV Library</title>
     <link rel="stylesheet" href="index.css" />
   </head>
   <body>
@@ -13,7 +13,7 @@
       src="https://hanime.tv"
       allowfullscreen
       webpreferences="allowRunningInsecureContent=yes, javascript=yes"
-      useragent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       partition="persist:main">
     </webview>
 
@@ -76,6 +76,34 @@
         <div class="action-buttons">
           <button id="cancelButton" class="action-button cancel-button">Cancel</button>
           <button id="saveButton" class="action-button save-button">Save to Library</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Image Save Modal - Add this after the existing dataModal in index.html -->
+    <div id="imageSaveModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title">Save Images to Library</h2>
+          <button id="closeImageModal" class="close-button">&times;</button>
+        </div>
+        <table class="data-table">
+          <tr>
+            <td>Images Selected</td>
+            <td><span id="imageCountDisplay" class="image-count-badge">0</span></td>
+          </tr>
+          <tr>
+            <td>Tag *</td>
+            <td><input type="text" id="imageTagField" class="data-field" placeholder="Enter a tag for these images" required maxlength="50"></td>
+          </tr>
+          <tr>
+            <td>Comments</td>
+            <td><textarea id="imageCommentsField" class="data-field" rows="4" placeholder="Optional comments about these images" maxlength="500"></textarea></td>
+          </tr>
+        </table>
+        <div class="action-buttons">
+          <button id="cancelImageButton" class="action-button cancel-button">Cancel</button>
+          <button id="saveImageButton" class="action-button save-button">Save to Library</button>
         </div>
       </div>
     </div>
