@@ -205,6 +205,261 @@
       </div>
     </div>
 
+    <!-- Video Duplicate Resolution Modal -->
+    <div id="videoDuplicateModal" class="modal">
+      <div class="modal-content" style="max-width: 1000px;">
+        <div class="modal-header">
+          <h2 class="modal-title">Duplicate Video Detected</h2>
+          <button id="closeVideoDuplicateModal" class="close-button">&times;</button>
+        </div>
+        
+        <div style="margin-bottom: 20px; padding: 15px; background: rgba(255, 193, 7, 0.1); border-left: 4px solid #FFC107; border-radius: 4px;">
+          <strong>⚠️ This video already exists in your library.</strong><br>
+          Choose which version to keep or update the existing entry with new data.
+        </div>
+
+        <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+          <!-- Existing Video Column -->
+          <div style="flex: 1; background: #1e1e1e; padding: 20px; border-radius: 8px; border: 2px solid #f44336;">
+            <h3 style="color: #f44336; margin-bottom: 15px; text-align: center;">📁 Existing in Library</h3>
+            <table class="data-table">
+              <tr><td>Title</td><td><input type="text" id="existingTitle" class="data-field" readonly></td></tr>
+              <tr><td>Views</td><td><input type="text" id="existingViews" class="data-field" readonly></td></tr>
+              <tr><td>Brand</td><td><input type="text" id="existingBrand" class="data-field" readonly></td></tr>
+              <tr><td>Playlist</td><td><input type="text" id="existingPlaylist" class="data-field" readonly></td></tr>
+              <tr><td>Release Date</td><td><input type="text" id="existingReleaseDate" class="data-field" readonly></td></tr>
+              <tr><td>Saved</td><td><input type="text" id="existingCreatedAt" class="data-field" readonly></td></tr>
+              <tr><td>Tags</td><td><div id="existingTagsContainer" class="tags-container"></div></td></tr>
+              <tr><td>Plot</td><td><textarea id="existingPlot" class="data-field" rows="4" readonly></textarea></td></tr>
+            </table>
+          </div>
+
+          <!-- New Video Column -->
+          <div style="flex: 1; background: #1e1e1e; padding: 20px; border-radius: 8px; border: 2px solid #4CAF50;">
+            <h3 style="color: #4CAF50; margin-bottom: 15px; text-align: center;">✨ New Version</h3>
+            <table class="data-table">
+              <tr><td>Title</td><td><input type="text" id="newTitle" class="data-field" readonly></td></tr>
+              <tr><td>Views</td><td><input type="text" id="newViews" class="data-field" readonly></td></tr>
+              <tr><td>Brand</td><td><input type="text" id="newBrand" class="data-field" readonly></td></tr>
+              <tr><td>Playlist</td><td><input type="text" id="newPlaylist" class="data-field"></td></tr>
+              <tr><td>Release Date</td><td><input type="text" id="newReleaseDate" class="data-field" readonly></td></tr>
+              <tr><td>Scraped</td><td><input type="text" id="newScrapedAt" class="data-field" readonly></td></tr>
+              <tr><td>Tags</td><td><div id="newTagsContainer" class="tags-container"></div></td></tr>
+              <tr><td>Plot</td><td><textarea id="newPlot" class="data-field" rows="4"></textarea></td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="action-buttons" style="justify-content: center; gap: 15px;">
+          <button id="keepExistingBtn" class="action-button" style="background: #757575;">Keep Existing</button>
+          <button id="updateWithNewBtn" class="action-button" style="background: #FF9800;">Update with New Data</button>
+          <button id="customMergeBtn" class="action-button" style="background: #2196F3;">Custom Merge</button>
+          <button id="cancelDuplicateBtn" class="action-button cancel-button">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Image Duplicate Resolution Modal -->
+    <div id="imageDuplicateModal" class="modal">
+      <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+          <h2 class="modal-title">Duplicate Images Detected</h2>
+          <button id="closeImageDuplicateModal" class="close-button">&times;</button>
+        </div>
+        
+        <div style="margin-bottom: 20px; padding: 15px; background: rgba(255, 193, 7, 0.1); border-left: 4px solid #FFC107; border-radius: 4px;">
+          <strong>⚠️ Some images already exist in your library.</strong><br>
+          <span id="duplicateImageCount">0</span> out of <span id="totalImageCount">0</span> images are duplicates.
+        </div>
+
+        <!-- Duplicate Images List -->
+        <div id="duplicateImagesList" style="max-height: 400px; overflow-y: auto; margin-bottom: 20px;">
+          <!-- Dynamic content will be populated here -->
+        </div>
+
+        <div style="background: #1e1e1e; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+          <h4 style="margin-bottom: 10px; color: #4CAF50;">New Images to Save:</h4>
+          <div style="display: flex; align-items: center; gap: 15px;">
+            <div style="flex: 1;">
+              <label style="display: block; margin-bottom: 5px; color: #aaa;">Tag:</label>
+              <input type="text" id="newImageTag" class="data-field" placeholder="Enter tag for new images">
+            </div>
+            <div style="flex: 2;">
+              <label style="display: block; margin-bottom: 5px; color: #aaa;">Comments:</label>
+              <input type="text" id="newImageComments" class="data-field" placeholder="Optional comments">
+            </div>
+          </div>
+        </div>
+
+        <div class="action-buttons" style="justify-content: center; gap: 15px;">
+          <button id="saveNewImagesOnlyBtn" class="action-button save-button">Save New Images Only</button>
+          <button id="saveAllImagesBtn" class="action-button" style="background: #FF9800;">Save All (Including Duplicates)</button>
+          <button id="cancelImageDuplicateBtn" class="action-button cancel-button">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Merge Modal (for videos) -->
+    <div id="customMergeModal" class="modal">
+      <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+          <h2 class="modal-title">Custom Merge</h2>
+          <button id="closeCustomMergeModal" class="close-button">&times;</button>
+        </div>
+        
+        <div style="margin-bottom: 20px; padding: 15px; background: rgba(33, 150, 243, 0.1); border-left: 4px solid #2196F3; border-radius: 4px;">
+          <strong>🔧 Choose the best values from both versions</strong><br>
+          Select which data to keep for each field.
+        </div>
+
+        <table class="data-table">
+          <tr>
+            <td>Title</td>
+            <td>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="radio" name="title_choice" value="existing" id="title_existing">
+                <label for="title_existing" style="flex: 1;"><input type="text" id="merge_title_existing" class="data-field" readonly></label>
+                <input type="radio" name="title_choice" value="new" id="title_new">
+                <label for="title_new" style="flex: 1;"><input type="text" id="merge_title_new" class="data-field" readonly></label>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>Views</td>
+            <td>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="radio" name="views_choice" value="existing" id="views_existing">
+                <label for="views_existing" style="flex: 1;"><input type="text" id="merge_views_existing" class="data-field" readonly></label>
+                <input type="radio" name="views_choice" value="new" id="views_new">
+                <label for="views_new" style="flex: 1;"><input type="text" id="merge_views_new" class="data-field" readonly></label>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>Playlist</td>
+            <td>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="radio" name="playlist_choice" value="existing" id="playlist_existing">
+                <label for="playlist_existing" style="flex: 1;"><input type="text" id="merge_playlist_existing" class="data-field" readonly></label>
+                <input type="radio" name="playlist_choice" value="new" id="playlist_new">
+                <label for="playlist_new" style="flex: 1;"><input type="text" id="merge_playlist_new" class="data-field"></label>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>Plot</td>
+            <td>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="radio" name="plot_choice" value="existing" id="plot_existing">
+                <label for="plot_existing" style="flex: 1;"><textarea id="merge_plot_existing" class="data-field" rows="3" readonly></textarea></label>
+                <input type="radio" name="plot_choice" value="new" id="plot_new">
+                <label for="plot_new" style="flex: 1;"><textarea id="merge_plot_new" class="data-field" rows="3"></textarea></label>
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <div class="action-buttons">
+          <button id="saveMergedBtn" class="action-button save-button">Save Merged Data</button>
+          <button id="cancelMergeBtn" class="action-button cancel-button">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <style>
+    /* Additional styles for duplicate resolution */
+    .duplicate-image-item {
+      display: flex;
+      gap: 15px;
+      padding: 15px;
+      background: #2a2a2a;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border-left: 4px solid #f44336;
+    }
+
+    .duplicate-image-preview {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 4px;
+      background: #333;
+    }
+
+    .duplicate-image-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .duplicate-image-field {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+
+    .duplicate-image-label {
+      color: #aaa;
+      min-width: 80px;
+    }
+
+    .duplicate-image-value {
+      color: #fff;
+      font-family: monospace;
+      background: #1a1a1a;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    .merge-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .merge-option:hover {
+      background: rgba(33, 150, 243, 0.1);
+      border-color: #2196F3;
+    }
+
+    .merge-option input[type="radio"]:checked + label {
+      background: rgba(33, 150, 243, 0.2);
+    }
+
+    /* Radio button styling */
+    input[type="radio"] {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .modal-content {
+        width: 95% !important;
+        max-width: none !important;
+        margin: 2% auto !important;
+      }
+      
+      .duplicate-image-item {
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .merge-option {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+    </style>
+
     <!-- Load application modules in dependency order -->
     <script>
       console.log('Starting to load scripts...');
@@ -215,6 +470,12 @@
     <script src="./renderer/scraper.js"></script>
     <script src="./renderer/image-selection-manager.js"></script>
     <script src="./renderer/image-injector.js"></script>
+    
+    <!-- NEW: Add database components -->
+    <script src="./renderer/database-manager.js"></script>
+    <script src="./renderer/duplicate-resolver.js"></script>
+    
+    <!-- UPDATED: Replace with new versions -->
     <script src="./renderer/image-page-controller.js"></script>
     <script src="./renderer/settings-manager.js"></script>
     <script src="./renderer/app-controller.js"></script>
