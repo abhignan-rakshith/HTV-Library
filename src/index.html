@@ -80,7 +80,7 @@
       </div>
     </div>
 
-    <!-- Image Save Modal - Add this after the existing dataModal in index.html -->
+    <!-- Image Save Modal -->
     <div id="imageSaveModal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
@@ -93,7 +93,7 @@
             <td><span id="imageCountDisplay" class="image-count-badge">0</span></td>
           </tr>
           <tr>
-            <td>Tag *</td>
+            <td>Tag</td>
             <td><input type="text" id="imageTagField" class="data-field" placeholder="Enter a tag for these images" required maxlength="50"></td>
           </tr>
           <tr>
@@ -108,9 +108,16 @@
       </div>
     </div>
 
-    <!-- Load application modules -->
+    <!-- Load application modules in dependency order -->
     <script src="renderer/ui-manager.js"></script>
     <script src="renderer/scraper.js"></script>
+    
+    <!-- New modular image selection components -->
+    <script src="renderer/image-selection-manager.js"></script>
+    <script src="renderer/image-injector.js"></script>
+    <script src="renderer/image-page-controller.js"></script>
+    
+    <!-- Main application controller -->
     <script src="renderer/app-controller.js"></script>
     
     <!-- Initialize application -->
