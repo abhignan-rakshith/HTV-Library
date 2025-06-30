@@ -1,5 +1,13 @@
 /**
  * DatabaseManager - Handles SQLite database operations with duplicate detection
+ * 
+ * Note: The getPlaylists() method now properly checks:
+ * 1. If database is initialized and configured
+ * 2. If database file exists and is accessible  
+ * 3. If there are actual playlist entries in the database
+ * 
+ * This ensures the playlist dropdown is only populated when there's real data,
+ * not with hardcoded placeholder values.
  */
 class DatabaseManager {
     constructor() {
@@ -16,12 +24,19 @@ class DatabaseManager {
       try {
         this.dbPath = dbPath;
         
-        // Note: In a real Electron app, you'd use sqlite3 or better-sqlite3
-        // For this example, I'll show the structure you'd need
         console.log('Initializing database at:', dbPath);
         
-        await this.createTables();
-        return true;
+        // Use IPC to initialize database in main process
+        const result = await window.electronAPI.database.initialize(dbPath);
+        
+        if (result.success) {
+          this.db = true; // Mark as initialized
+          console.log('Database initialized successfully');
+          return true;
+        } else {
+          console.error('Database initialization failed:', result.error);
+          return false;
+        }
       } catch (error) {
         console.error('Database initialization failed:', error);
         return false;
@@ -29,46 +44,12 @@ class DatabaseManager {
     }
   
     /**
-     * Create database tables
+     * Create database tables - now handled by main process
      * @private
      */
     async createTables() {
-      const videoTableSQL = `
-        CREATE TABLE IF NOT EXISTS videos (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          url TEXT UNIQUE NOT NULL,
-          title TEXT,
-          views INTEGER,
-          thumbnail TEXT,
-          brand TEXT,
-          playlist TEXT,
-          release_date TEXT,
-          plot TEXT,
-          tags TEXT, -- JSON array as string
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-      `;
-  
-      const imagesTableSQL = `
-        CREATE TABLE IF NOT EXISTS images (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          url TEXT NOT NULL,
-          tag TEXT NOT NULL,
-          comments TEXT,
-          source_url TEXT NOT NULL,
-          saved_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE(url, source_url, tag)
-        )
-      `;
-  
-      // Execute table creation
-      // In real implementation:
-      // await this.db.exec(videoTableSQL);
-      // await this.db.exec(imagesTableSQL);
-      
-      console.log('Database tables created/verified');
+      // Table creation is now handled in the main process during initialization
+      console.log('Database tables handled by main process');
     }
   
     /**
@@ -78,30 +59,30 @@ class DatabaseManager {
      */
     async checkVideoDuplicate(url) {
       try {
-        const cleanUrl = this.cleanUrl(url);
+        if (!this.db || !this.dbPath) {
+          console.log('Database not initialized');
+          return null;
+        }
+
+        const result = await window.electronAPI.database.checkVideoDuplicate(url);
         
-        // In real implementation:
-        // const stmt = await this.db.prepare('SELECT * FROM videos WHERE url = ?');
-        // const result = await stmt.get(cleanUrl);
-        
-        // For demo purposes, simulate finding a duplicate
-        const simulatedExisting = {
-          id: 1,
-          url: cleanUrl,
-          title: "Existing Video Title",
-          views: 1234,
-          thumbnail: "https://example.com/thumb.jpg",
-          brand: "Existing Brand",
-          playlist: "Favorites",
-          release_date: "2024-01-15",
-          plot: "This is an existing video in the database...",
-          tags: JSON.stringify(["tag1", "tag2"]),
-          created_at: "2024-01-15 10:30:00",
-          updated_at: "2024-01-15 10:30:00"
-        };
-  
-        // Return null for no duplicate, or the existing record
-        return Math.random() > 0.7 ? simulatedExisting : null;
+        if (result.error) {
+          console.error('Error checking video duplicate:', result.error);
+          return null;
+        }
+
+        if (result.duplicate) {
+          // Parse tags back from JSON string
+          if (result.duplicate.tags) {
+            try {
+              result.duplicate.tags = JSON.parse(result.duplicate.tags);
+            } catch (e) {
+              result.duplicate.tags = [];
+            }
+          }
+        }
+
+        return result.duplicate;
         
       } catch (error) {
         console.error('Error checking video duplicate:', error);
@@ -117,29 +98,19 @@ class DatabaseManager {
      */
     async checkImageDuplicates(imageUrls, sourceUrl) {
       try {
-        const cleanSourceUrl = this.cleanUrl(sourceUrl);
-        const duplicates = [];
-  
-        for (const imageUrl of imageUrls) {
-          // In real implementation:
-          // const stmt = await this.db.prepare('SELECT * FROM images WHERE url = ? AND source_url = ?');
-          // const result = await stmt.get(imageUrl, cleanSourceUrl);
-          
-          // Simulate finding some duplicates
-          if (Math.random() > 0.8) {
-            duplicates.push({
-              id: Math.floor(Math.random() * 1000),
-              url: imageUrl,
-              tag: "Existing Tag",
-              comments: "Previously saved image",
-              source_url: cleanSourceUrl,
-              saved_at: "2024-01-10 15:20:00",
-              created_at: "2024-01-10 15:20:00"
-            });
-          }
+        if (!this.db || !this.dbPath) {
+          console.log('Database not initialized');
+          return [];
         }
-  
-        return duplicates;
+
+        const result = await window.electronAPI.database.checkImageDuplicates(imageUrls, sourceUrl);
+        
+        if (result.error) {
+          console.error('Error checking image duplicates:', result.error);
+          return [];
+        }
+
+        return result.duplicates || [];
         
       } catch (error) {
         console.error('Error checking image duplicates:', error);
@@ -155,45 +126,19 @@ class DatabaseManager {
      */
     async saveVideo(videoData, isUpdate = false) {
       try {
-        const cleanUrl = this.cleanUrl(videoData.url);
-        const tagsJson = JSON.stringify(videoData.tags || []);
-  
-        if (isUpdate) {
-          // Update existing record
-          const updateSQL = `
-            UPDATE videos SET
-              title = ?, views = ?, thumbnail = ?, brand = ?, 
-              playlist = ?, release_date = ?, plot = ?, tags = ?,
-              updated_at = CURRENT_TIMESTAMP
-            WHERE url = ?
-          `;
-          
-          // In real implementation:
-          // const stmt = await this.db.prepare(updateSQL);
-          // await stmt.run(videoData.title, videoData.views, videoData.thumbnail, 
-          //                videoData.brand, videoData.playlist, videoData.releaseDate, 
-          //                videoData.plot, tagsJson, cleanUrl);
-          
-          console.log('Video updated in database:', cleanUrl);
-          return { success: true, action: 'updated', id: 1 };
-          
-        } else {
-          // Insert new record
-          const insertSQL = `
-            INSERT INTO videos (url, title, views, thumbnail, brand, playlist, release_date, plot, tags)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `;
-          
-          // In real implementation:
-          // const stmt = await this.db.prepare(insertSQL);
-          // const result = await stmt.run(cleanUrl, videoData.title, videoData.views, 
-          //                               videoData.thumbnail, videoData.brand, 
-          //                               videoData.playlist, videoData.releaseDate, 
-          //                               videoData.plot, tagsJson);
-          
-          console.log('Video saved to database:', cleanUrl);
-          return { success: true, action: 'inserted', id: Math.floor(Math.random() * 1000) };
+        if (!this.db || !this.dbPath) {
+          return { success: false, error: 'Database not initialized' };
         }
+
+        const result = await window.electronAPI.database.saveVideo(videoData, isUpdate);
+        
+        if (result.success) {
+          console.log(`Video ${isUpdate ? 'updated' : 'saved'} in database:`, videoData.url);
+        } else {
+          console.error('Error saving video:', result.error);
+        }
+
+        return result;
         
       } catch (error) {
         console.error('Error saving video:', error);
@@ -208,42 +153,19 @@ class DatabaseManager {
      */
     async saveImages(imageData) {
       try {
-        const cleanSourceUrl = this.cleanUrl(imageData.sourceUrl);
-        let savedCount = 0;
-        let skippedCount = 0;
-  
-        for (const imageUrl of imageData.urls) {
-          try {
-            const insertSQL = `
-              INSERT OR IGNORE INTO images (url, tag, comments, source_url, saved_at)
-              VALUES (?, ?, ?, ?, ?)
-            `;
-            
-            // In real implementation:
-            // const stmt = await this.db.prepare(insertSQL);
-            // const result = await stmt.run(imageUrl, imageData.tag, imageData.comments, 
-            //                               cleanSourceUrl, imageData.savedAt);
-            
-            // Simulate some images being skipped due to duplicates
-            if (Math.random() > 0.2) {
-              savedCount++;
-            } else {
-              skippedCount++;
-            }
-            
-          } catch (error) {
-            console.error(`Error saving image ${imageUrl}:`, error);
-            skippedCount++;
-          }
+        if (!this.db || !this.dbPath) {
+          return { success: false, error: 'Database not initialized' };
         }
-  
-        console.log(`Images saved: ${savedCount}, skipped: ${skippedCount}`);
-        return { 
-          success: true, 
-          saved: savedCount, 
-          skipped: skippedCount,
-          total: imageData.urls.length
-        };
+
+        const result = await window.electronAPI.database.saveImages(imageData);
+        
+        if (result.success) {
+          console.log(`Images saved: ${result.saved}, skipped: ${result.skipped}`);
+        } else {
+          console.error('Error saving images:', result.error);
+        }
+
+        return result;
         
       } catch (error) {
         console.error('Error saving images:', error);
@@ -257,16 +179,31 @@ class DatabaseManager {
      */
     async getPlaylists() {
       try {
-        // In real implementation:
-        // const stmt = await this.db.prepare('SELECT DISTINCT playlist FROM videos WHERE playlist IS NOT NULL AND playlist != "" ORDER BY playlist');
-        // const rows = await stmt.all();
-        // return rows.map(row => row.playlist);
+        // Check if database is initialized and path is set
+        if (!this.db || !this.dbPath) {
+          console.log('DatabaseManager: Database not initialized, returning empty playlists');
+          return [];
+        }
+
+        const result = await window.electronAPI.database.getPlaylists();
         
-        // Simulate some existing playlists
-        return ['Favorites', 'Watch Later', 'Comedy', 'Drama', 'Action'];
+        if (result.error) {
+          console.error('DatabaseManager: Error getting playlists:', result.error);
+          return [];
+        }
+
+        const playlists = result.playlists || [];
+        
+        if (playlists.length === 0) {
+          console.log('DatabaseManager: No playlists found in database');
+        } else {
+          console.log('DatabaseManager: Found', playlists.length, 'playlists:', playlists);
+        }
+
+        return playlists;
         
       } catch (error) {
-        console.error('Error getting playlists:', error);
+        console.error('DatabaseManager: Error getting playlists:', error);
         return [];
       }
     }
@@ -277,12 +214,22 @@ class DatabaseManager {
      */
     async getStats() {
       try {
-        // In real implementation, you'd run actual COUNT queries
+        if (!this.db || !this.dbPath) {
+          return { totalVideos: 0, totalImages: 0, totalPlaylists: 0, dbSize: 0 };
+        }
+
+        const result = await window.electronAPI.database.getStats();
+        
+        if (result.error) {
+          console.error('Error getting database stats:', result.error);
+          return { totalVideos: 0, totalImages: 0, totalPlaylists: 0, dbSize: 0 };
+        }
+
         return {
-          totalVideos: Math.floor(Math.random() * 1000),
-          totalImages: Math.floor(Math.random() * 5000),
-          totalPlaylists: 5,
-          dbSize: Math.floor(Math.random() * 10000000) // bytes
+          totalVideos: result.totalVideos || 0,
+          totalImages: result.totalImages || 0,
+          totalPlaylists: result.totalPlaylists || 0,
+          dbSize: result.dbSize || 0
         };
       } catch (error) {
         console.error('Error getting stats:', error);
@@ -291,26 +238,15 @@ class DatabaseManager {
     }
   
     /**
-     * Clean URL for consistent storage
-     * @param {string} url - URL to clean
-     * @returns {string} - Cleaned URL
-     * @private
-     */
-    cleanUrl(url) {
-      if (!url) return '';
-      // Remove query parameters and fragments for consistent comparison
-      return url.split('?')[0].split('#')[0].toLowerCase();
-    }
-  
-    /**
      * Close database connection
      */
     async close() {
       try {
         if (this.db) {
-          // In real implementation:
-          // await this.db.close();
+          await window.electronAPI.database.close();
           this.db = null;
+          this.dbPath = null;
+          console.log('Database connection closed');
         }
       } catch (error) {
         console.error('Error closing database:', error);

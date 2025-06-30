@@ -2,8 +2,10 @@
  * SettingsManager - Handles application settings and database configuration
  */
 class SettingsManager {
-    constructor(uiManager) {
+    constructor(uiManager, databaseManager = null) {
       this.uiManager = uiManager;
+      this.databaseManager = databaseManager;
+      this.onDatabaseConfigured = null; // Callback for when database is configured
       this.settings = {
         databasePath: null
       };
@@ -104,14 +106,34 @@ class SettingsManager {
         const result = await window.electronAPI.settings.createDatabase(dbPath);
         
         if (result.success) {
-          // Save to localStorage
-          this.settings.databasePath = dbPath;
-          this.saveSettingsToStorage();
+          // Initialize database connection and tables
+          this.updateDatabaseStatus('loading', 'Initializing database...');
           
-          // Update UI
-          await this.updateDatabaseStatus();
-          this.uiManager.showSnackbar('Database created and configured successfully!');
-          this.updateSaveButtonState();
+          if (this.databaseManager) {
+            const initResult = await this.databaseManager.initialize(dbPath);
+            
+            if (initResult) {
+              // Save to localStorage
+              this.settings.databasePath = dbPath;
+              this.saveSettingsToStorage();
+              
+              // Update UI
+              await this.updateDatabaseStatus();
+              this.uiManager.showSnackbar('Database created and configured successfully!');
+              this.updateSaveButtonState();
+              
+              // Notify app controller to reload playlists
+              if (this.onDatabaseConfigured) {
+                this.onDatabaseConfigured();
+              }
+            } else {
+              this.updateDatabaseStatus('not-configured', 'Failed to initialize database');
+              this.uiManager.showSnackbar('Failed to initialize database');
+            }
+          } else {
+            this.updateDatabaseStatus('not-configured', 'Database manager not available');
+            this.uiManager.showSnackbar('Database manager not available');
+          }
           
         } else {
           this.updateDatabaseStatus('not-configured', `Error: ${result.error}`);
@@ -351,6 +373,22 @@ class SettingsManager {
       this.updateDatabaseStatus();
       this.updateSaveButtonState();
       this.uiManager.showSnackbar('Settings reset to defaults');
+    }
+  
+    /**
+     * Set database manager reference
+     * @param {DatabaseManager} databaseManager - Database manager instance
+     */
+    setDatabaseManager(databaseManager) {
+      this.databaseManager = databaseManager;
+    }
+
+    /**
+     * Set callback for database configuration events
+     * @param {Function} callback - Callback function
+     */
+    setOnDatabaseConfigured(callback) {
+      this.onDatabaseConfigured = callback;
     }
   }
   

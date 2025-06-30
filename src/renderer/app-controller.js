@@ -38,16 +38,18 @@ class AppController {
 
     // Initialize settings manager
     try {
-      this.settingsManager = new SettingsManager(this.uiManager);
+      this.settingsManager = new SettingsManager(this.uiManager, this.databaseManager);
       
-      // Initialize database when settings change
-      this.settingsManager.onDatabaseConfigured = (dbPath) => {
-        this.initializeDatabase(dbPath);
-      };
+      // Set callback for database configuration events
+      this.settingsManager.setOnDatabaseConfigured(() => {
+        this.loadPlaylistsFromDatabase();
+      });
       
-      // Check if database is already configured
+      // Check if database is already configured and initialize if needed
       if (this.settingsManager.isDatabaseConfigured()) {
-        await this.initializeDatabase(this.settingsManager.getDatabasePath());
+        const dbPath = this.settingsManager.getDatabasePath();
+        console.log('AppController: Database already configured, initializing...');
+        await this.initializeDatabase(dbPath);
       }
       
     } catch (error) {
@@ -235,7 +237,13 @@ class AppController {
     console.log('AppController: Loading playlists from database...');
     
     if (!this.isDatabaseConfigured()) {
-      console.log('AppController: Database not configured, skipping playlist load');
+      console.log('AppController: Database not configured, clearing playlist dropdown');
+      this.uiManager.populatePlaylistDropdown([]);
+      return;
+    }
+
+    if (!this.databaseManager) {
+      console.log('AppController: Database manager not available, clearing playlist dropdown');
       this.uiManager.populatePlaylistDropdown([]);
       return;
     }
@@ -243,7 +251,12 @@ class AppController {
     try {
       const playlists = await this.databaseManager.getPlaylists();
       this.uiManager.populatePlaylistDropdown(playlists);
-      console.log('AppController: Loaded', playlists.length, 'playlists');
+      
+      if (playlists.length === 0) {
+        console.log('AppController: No playlists found in database - dropdown will be empty');
+      } else {
+        console.log('AppController: Loaded', playlists.length, 'playlists from database');
+      }
       
     } catch (error) {
       console.error('AppController: Error loading playlists:', error);

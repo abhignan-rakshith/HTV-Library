@@ -52,7 +52,10 @@ class UIManager {
    */
   populatePlaylistDropdown(playlists = []) {
     const datalist = document.getElementById('playlistDatalist');
-    if (!datalist) return;
+    if (!datalist) {
+      console.warn('UIManager: Playlist datalist element not found');
+      return;
+    }
 
     // Clear existing options
     datalist.innerHTML = '';
@@ -64,7 +67,11 @@ class UIManager {
       datalist.appendChild(option);
     });
 
-    console.log('Playlist dropdown populated with', playlists.length, 'items');
+    if (playlists.length === 0) {
+      console.log('UIManager: Playlist dropdown cleared - no playlists available');
+    } else {
+      console.log('UIManager: Playlist dropdown populated with', playlists.length, 'items:', playlists);
+    }
   }
 
   async showModal(data) {
